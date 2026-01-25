@@ -26,7 +26,7 @@ html, body {
 
 #radar-updated {
   position: fixed; bottom: 80px; left: 12px; color: white; font-family: monospace; font-size: 18px;
-  background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 6px; z-index: 2000;
+  background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 6px; z-index: 2000;
   pointer-events: none; text-shadow: 1px 1px 2px black;
 }
 
@@ -39,51 +39,50 @@ html, body {
   background: rgba(0,0,0,0.6); color: white; cursor: pointer;
 }
 #zoom-buttons button:hover { background: rgba(255,255,255,0.2); }
-
 </style>
 </head>
 
 <body>
 <div id="map"></div>
-<div id="clock"></div>
 <div id="radar-updated"></div>
+<div id="clock"></div>
 <div id="zoom-buttons">
   <button onclick="zoomIn()">+</button>
   <button onclick="zoomOut()">-</button>
 </div>
 
 <script>
-// Initialize map
 const map = L.map("map", { center:[39.5,-98.35], zoom:5, zoomControl:false, attributionControl:false });
 
 // Dark base map
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
 
-let radarLayer = null;
+window.radarLayer = null;
 
-// Function to load the absolute latest radar frame
+// Load latest radar frame only
 async function loadRadar() {
   try {
     const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
     const data = await res.json();
 
-    // Combine nowcast and past frames
-    const frames = (data.radar.nowcast || []).concat(data.radar.past || []);
+    // Use nowcast first, fallback to past
+    let frames = (data.radar.nowcast || []).concat(data.radar.past || []);
     if (!frames.length) return;
 
-    // Always pick the frame with the highest timestamp
-    const latest = frames.reduce((a,b) => a.time > b.time ? a : b);
+    const latest = frames[frames.length - 1]; // newest frame
 
-    // Remove old radar if exists
-    if (radarLayer) map.removeLayer(radarLayer);
+    if (window.radarLayer) map.removeLayer(window.radarLayer);
 
-    radarLayer = L.tileLayer(
+    window.radarLayer = L.tileLayer(
       `https://tilecache.rainviewer.com/v2/radar/${latest.time}/256/{z}/{x}/{y}/2/1_1.png`,
       { opacity:0.75, zIndex:1000 }
     ).addTo(map);
 
-    // Show last updated timestamp
-    const frameTime = new Date(latest.time * 1000);
+    // Display radar update time, capped at current local time
+    const now = new Date();
+    let frameTime = new Date(latest.time * 1000);
+    if (frameTime > now) frameTime = now;
+
     document.getElementById("radar-updated").textContent =
       `Radar Updated: ${frameTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
 
@@ -92,12 +91,12 @@ async function loadRadar() {
   }
 }
 
-// Load radar immediately and refresh every 30 seconds
+// Initial load + refresh every 30s for near real-time
 loadRadar();
 setInterval(loadRadar, 30 * 1000);
 
-// Clock
-function updateClock() {
+// Live clock
+function updateClock(){
   const now = new Date();
   document.getElementById("clock").textContent =
     now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZoneName:"short"});
@@ -105,10 +104,9 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 1000);
 
-// Zoom
+// Zoom buttons
 function zoomIn(){ map.zoomIn(); }
 function zoomOut(){ map.zoomOut(); }
-
 </script>
 </body>
 </html>
