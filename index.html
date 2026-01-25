@@ -28,31 +28,50 @@
     height: 100vh;
   }
 
-  /* Hide Leaflet UI junk */
+  /* Hide Leaflet UI */
   .leaflet-control-attribution,
   .leaflet-control-zoom {
     display: none;
+  }
+
+  /* Clock styling */
+  #clock {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    color: white;
+    font-family: monospace;
+    font-size: 18px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 10px;
+    border-radius: 6px;
+    z-index: 2000;
+    pointer-events: none;
   }
 </style>
 </head>
 
 <body>
+
 <div id="map"></div>
+<div id="clock"></div>
 
 <script>
+  /* Initialize map */
   const map = L.map("map", {
-    center: [39.5, -98.35], // Center of CONUS
-    zoom: 5,
+    center: [39.5, -98.35], // CONUS center
+    zoom: 5.2,
     zoomControl: false,
     attributionControl: false
   });
 
-  // Dark base map (Weather Channel vibes)
+  /* Dark basemap */
   L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
     { maxZoom: 18 }
   ).addTo(map);
 
+  /* Radar animation */
   let radarLayer = null;
   let radarFrames = [];
   let frameIndex = 0;
@@ -62,7 +81,6 @@
     const data = await res.json();
 
     radarFrames = data.radar.past.concat(data.radar.nowcast || []);
-
     animateRadar();
   }
 
@@ -83,7 +101,23 @@
   }
 
   loadRadar();
-  setInterval(animateRadar, 10000); // animation speed (ms)
+  setInterval(animateRadar, 10000); // radar frame speed (ms)
+
+  /* Live clock */
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").textContent =
+      now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short"
+      });
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
 </script>
+
 </body>
 </html>
