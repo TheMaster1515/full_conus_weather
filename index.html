@@ -11,34 +11,49 @@
 
 <style>
 html, body {
-  margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  overflow: hidden;
 }
 
-#map { width: 100vw; height: 100vh; transform: scale(1.05); transform-origin: center center; }
+#map {
+  width: 100vw;
+  height: 100vh;
+}
 
-.leaflet-control-attribution, .leaflet-control-zoom { display: none; }
+.leaflet-control-attribution,
+.leaflet-control-zoom {
+  display: none;
+}
 
 #clock {
-  position: fixed; bottom: 12px; left: 12px; color: white; font-family: monospace; font-size: 40px;
-  background: rgba(0,0,0,0.6); padding: 10px 16px; border-radius: 8px; z-index: 2000;
-  pointer-events: none; text-shadow: 1px 1px 2px black;
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  color: white;
+  font-family: monospace;
+  font-size: 40px;
+  background: rgba(0,0,0,0.6);
+  padding: 10px 16px;
+  border-radius: 8px;
+  z-index: 2000;
 }
 
 #radar-updated {
-  position: fixed; bottom: 80px; left: 12px; color: white; font-family: monospace; font-size: 18px;
-  background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 6px; z-index: 2000;
-  pointer-events: none; text-shadow: 1px 1px 2px black;
+  position: fixed;
+  bottom: 80px;
+  left: 12px;
+  color: white;
+  font-family: monospace;
+  font-size: 18px;
+  background: rgba(0,0,0,0.4);
+  padding: 6px 10px;
+  border-radius: 6px;
+  z-index: 2000;
 }
-
-#zoom-buttons {
-  position: fixed; bottom: 12px; right: 12px; z-index: 2000;
-}
-
-#zoom-buttons button {
-  font-size: 24px; margin: 2px; padding: 8px 12px; border-radius: 6px; border: none;
-  background: rgba(0,0,0,0.6); color: white; cursor: pointer;
-}
-#zoom-buttons button:hover { background: rgba(255,255,255,0.2); }
 </style>
 </head>
 
@@ -46,67 +61,89 @@ html, body {
 <div id="map"></div>
 <div id="radar-updated"></div>
 <div id="clock"></div>
-<div id="zoom-buttons">
-  <button onclick="zoomIn()">+</button>
-  <button onclick="zoomOut()">-</button>
-</div>
 
 <script>
-const map = L.map("map", { center:[39.5,-98.35], zoom:5, zoomControl:false, attributionControl:false });
+const map = L.map("map", {
+  center: [39.5, -98.35],
+  zoom: 5,
+  zoomControl: false,
+  attributionControl: false
+});
 
-// Dark base map
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
+L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  { maxZoom: 18 }
+).addTo(map);
 
-window.radarLayer = null;
+let radarLayer = null;
+let lastRadarTime = null;
 
-// Load latest radar frame only
 async function loadRadar() {
   try {
-    const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-    const data = await res.json();
+    const res = await fetch(
+      "https://api.rainviewer.com/public/weather-maps.json",
+      { cache: "no-store" }
+    );
 
-    // Use nowcast first, fallback to past
-    let frames = (data.radar.nowcast || []).concat(data.radar.past || []);
+    const data = await res.json();
+    const frames = [
+      ...(data.radar.past || []),
+      ...(data.radar.nowcast || [])
+    ];
+
     if (!frames.length) return;
 
-    const latest = frames[frames.length - 1]; // newest frame
+    const latest = frames[frames.length - 1];
 
-    if (window.radarLayer) map.removeLayer(window.radarLayer);
+    // Only update if a NEW frame exists
+    if (latest.time !== lastRadarTime) {
+      lastRadarTime = latest.time;
 
-    window.radarLayer = L.tileLayer(
-      `https://tilecache.rainviewer.com/v2/radar/${latest.time}/256/{z}/{x}/{y}/2/1_1.png`,
-      { opacity:0.4, zIndex:1000 }
-    ).addTo(map);
+      if (radarLayer) map.removeLayer(radarLayer);
 
-    // Display radar update time, capped at current local time
-    const now = new Date();
-    let frameTime = new Date(latest.time * 1000);
-    if (frameTime > now) frameTime = now;
+      radarLayer = L.tileLayer(
+        `https://tilecache.rainviewer.com/v2/radar/${latest.time}/256/{z}/{x}/{y}/2/1_1.png`,
+        {
+          opacity: 0.4,
+          zIndex: 1000,
+          updateWhenIdle: false,
+          updateWhenZooming: false
+        }
+      ).addTo(map);
 
-    document.getElementById("radar-updated").textContent =
-      `Radar Updated: ${frameTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+      const frameDate = new Date(latest.time * 1000);
 
-  } catch(e) {
-    console.error("Failed to load radar:", e);
+      document.getElementById("radar-updated").textContent =
+        "Radar Frame: " +
+        frameDate.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        });
+    }
+  } catch (err) {
+    console.error("Radar load failed:", err);
   }
 }
 
-// Initial load + refresh every 30s for near real-time
+// Initial load
 loadRadar();
-setInterval(loadRadar, 300000);
 
-// Live clock
-function updateClock(){
-  const now = new Date();
+// 🔁 Refresh EVERY 5 MINUTES
+setInterval(loadRadar, 5 * 60 * 1000);
+
+// Clock
+function updateClock() {
   document.getElementById("clock").textContent =
-    now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZoneName:"short"});
+    new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZoneName: "short"
+    });
 }
 updateClock();
 setInterval(updateClock, 1000);
-
-// Zoom buttons
-function zoomIn(){ map.zoomIn(); }
-function zoomOut(){ map.zoomOut(); }
 </script>
 </body>
 </html>
