@@ -1,89 +1,184 @@
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-  <meta charset="UTF-8">
-  <title>US Radar</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>US Radar Wall</title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: black;
-      overflow: hidden;
-    }
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+  }
 
-    #map {
-      width: 100vw;
-      height: 100vh;
-    }
+  /* Fullscreen map with soft zoom */
+  #map {
+    width: 100vw;
+    height: 100vh;
+    transform: scale(1.05);        /* 5% visual zoom in */
+    transform-origin: center center; /* center the map while scaling */
+  }
 
-    /* Hide Leaflet UI junk */
-    .leaflet-control-attribution,
-    .leaflet-control-zoom {
-      display: none;
-    }
-  </style>
-  </head>
+  /* Hide Leaflet UI */
+  .leaflet-control-attribution,
+  .leaflet-control-zoom {
+    display: none;
+  }
 
-  <body>
-  <div id="map"></div>
+  /* Large clock */
+  #clock {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    color: white;
+    font-family: monospace;
+    font-size: 40px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px 16px;
+    border-radius: 8px;
+    z-index: 2000;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px black;
+  }
 
-  <script>
-    const map = L.map("map", {
-      center: [39.5, -98.35], // Center of CONUS
-      zoom: 5.2,
-      zoomControl: false,
-      attributionControl: false
-    });
+  /* Radar timestamp */
+  #radar-time {
+    position: fixed;
+    bottom: 60px;
+    left: 12px;
+    color: white;
+    font-family: monospace;
+    font-size: 16px;
+    z-index: 2000;
+    text-shadow: 1px 1px 2px black;
+    pointer-events: none;
+  }
 
-    // Dark base map (Weather Channel vibes)
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      { maxZoom: 18 }
-    ).addTo(map);
+  /* Zoom buttons */
+  #zoom-buttons {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 2000;
+  }
 
-    let radarLayer = null;
-    let radarFrames = [];
-    let frameIndex = 0;
+  #zoom-buttons button {
+    font-size: 24px;
+    margin: 2px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    cursor: pointer;
+  }
 
-    async function loadRadar() {
+  #zoom-buttons button:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div id="radar-time"></div>
+<div id="clock"></div>
+<div id="zoom-buttons">
+  <button onclick="zoomIn()">+</button>
+  <button onclick="zoomOut()">-</button>
+</div>
+
+<script>
+  /* Initialize map */
+  const map = L.map("map", {
+    center: [39.5, -98.35], // CONUS center
+    zoom: 5,                // integer zoom
+    zoomControl: false,
+    attributionControl: false
+  });
+
+  /* Dark basemap */
+  L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    { maxZoom: 18 }
+  ).addTo(map);
+
+  /* Radar animation */
+  let radarLayer = null;
+  let radarFrames = [];
+  let frameIndex = 0;
+
+  async function loadRadar() {
+    try {
       const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
       const data = await res.json();
 
       radarFrames = data.radar.past.concat(data.radar.nowcast || []);
-
+      frameIndex = 0; // reset to start of animation
       animateRadar();
+    } catch(e) {
+      console.error("Failed to load radar:", e);
     }
+  }
 
-    function animateRadar() {
-      if (radarLayer) map.removeLayer(radarLayer);
+  function animateRadar() {
+    if (!radarFrames.length) return;
 
-      const frame = radarFrames[frameIndex];
+    if (radarLayer) map.removeLayer(radarLayer);
 
-      radarLayer = L.tileLayer(
-        `https://tilecache.rainviewer.com/v2/radar/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`,
-        {
-          opacity: 0.75,
-          zIndex: 1000
-        }
-      ).addTo(map);
+    const frame = radarFrames[frameIndex];
 
-      frameIndex = (frameIndex + 1) % radarFrames.length;
-    }
+    radarLayer = L.tileLayer(
+      `https://tilecache.rainviewer.com/v2/radar/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`,
+      {
+        opacity: 0.75,
+        zIndex: 1000
+      }
+    ).addTo(map);
 
-    loadRadar();
-    setInterval(loadRadar, 5*60*1000);
-  </script>
-  </body>
-  </html>
+    // Update radar timestamp
+    const d = new Date(frame.time * 1000);
+    document.getElementById("radar-time").textContent = `Radar: ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
+    frameIndex = (frameIndex + 1) % radarFrames.length;
+  }
+
+  loadRadar();
+  setInterval(loadRadar, 5 * 60 * 1000);  // refresh radar data every 5 min
+  setInterval(animateRadar, 10000);       // cycle frames every 10 sec
+
+  /* Live clock */
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").textContent =
+      now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short"
+      });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* Zoom buttons */
+  function zoomIn() { map.zoomIn(); }
+  function zoomOut() { map.zoomOut(); }
+
+</script>
+</body>
+</html>
