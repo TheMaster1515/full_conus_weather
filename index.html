@@ -23,9 +23,11 @@
     overflow: hidden;
   }
 
-  #map {
-    width: 100vw;
-    height: 100vh;
+#map {
+  width: 100vw;
+  height: 100vh;
+  transform: scale(1.05);        /* 5% visual zoom in */
+  transform-origin: center center; /* center the map while scaling */
   }
 
   /* Hide Leaflet UI */
@@ -60,7 +62,7 @@
   /* Initialize map */
   const map = L.map("map", {
     center: [39.5, -98.35], // CONUS center
-    zoom: 5.5,
+    zoom: 5,
     zoomControl: false,
     attributionControl: false
   });
