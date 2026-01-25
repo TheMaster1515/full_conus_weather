@@ -56,7 +56,7 @@
   /* Radar timestamp */
   #radar-time {
     position: fixed;
-    bottom: 60px;
+    bottom: 80px;
     left: 12px;
     color: white;
     font-family: monospace;
@@ -159,7 +159,6 @@
 
   loadRadar();
   setInterval(loadRadar, 5 * 60 * 1000);  // refresh radar data every 5 min
-  setInterval(animateRadar, 10000);       // cycle frames every 10 sec
 
   /* Live clock */
   function updateClock() {
