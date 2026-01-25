@@ -93,7 +93,7 @@ async function loadRadar() {
 
 // Initial load + refresh every 30s for near real-time
 loadRadar();
-setInterval(loadRadar, 30 * 100);
+setInterval(loadRadar, 30 * 1000);
 
 // Live clock
 function updateClock(){
@@ -102,7 +102,7 @@ function updateClock(){
     now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZoneName:"short"});
 }
 updateClock();
-setInterval(updateClock, 100);
+setInterval(updateClock, 1000);
 
 // Zoom buttons
 function zoomIn(){ map.zoomIn(); }
