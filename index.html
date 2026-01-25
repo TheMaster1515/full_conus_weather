@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>US Radar</title>
+<title>US Radar Wall</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -23,11 +23,12 @@
     overflow: hidden;
   }
 
-#map {
-  width: 100vw;
-  height: 100vh;
-  transform: scale(1.05);        /* 5% visual zoom in */
-  transform-origin: center center; /* center the map while scaling */
+  /* Fullscreen map with soft zoom */
+  #map {
+    width: 100vw;
+    height: 100vh;
+    transform: scale(1.05);        /* 5% visual zoom in */
+    transform-origin: center center; /* center the map while scaling */
   }
 
   /* Hide Leaflet UI */
@@ -43,10 +44,38 @@
     left: 12px;
     color: white;
     font-family: monospace;
-    font-size: 18px;
+    font-size: 20px;
     background: rgba(0, 0, 0, 0.6);
     padding: 6px 10px;
     border-radius: 6px;
+    z-index: 2000;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px black;
+  }
+
+  /* Radar timestamp */
+  #radar-time {
+    position: fixed;
+    bottom: 36px;
+    left: 12px;
+    color: white;
+    font-family: monospace;
+    font-size: 14px;
+    z-index: 2000;
+    text-shadow: 1px 1px 2px black;
+    pointer-events: none;
+  }
+
+  /* Optional LIVE indicator */
+  #live-indicator {
+    position: fixed;
+    bottom: 12px;
+    left: 180px;
+    color: red;
+    font-family: monospace;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
     z-index: 2000;
     pointer-events: none;
   }
@@ -57,12 +86,14 @@
 
 <div id="map"></div>
 <div id="clock"></div>
+<div id="radar-time"></div>
+<div id="live-indicator">LIVE</div>
 
 <script>
   /* Initialize map */
   const map = L.map("map", {
     center: [39.5, -98.35], // CONUS center
-    zoom: 5,
+    zoom: 5,                // integer zoom
     zoomControl: false,
     attributionControl: false
   });
@@ -87,6 +118,8 @@
   }
 
   function animateRadar() {
+    if (!radarFrames.length) return;
+
     if (radarLayer) map.removeLayer(radarLayer);
 
     const frame = radarFrames[frameIndex];
@@ -98,6 +131,10 @@
         zIndex: 1000
       }
     ).addTo(map);
+
+    // Update radar timestamp
+    const d = new Date(frame.time * 1000);
+    document.getElementById("radar-time").textContent = `Radar: ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
 
     frameIndex = (frameIndex + 1) % radarFrames.length;
   }
