@@ -50,15 +50,19 @@ const map = L.map("map", { center:[39.5,-98.35], zoom:5, zoomControl:false, attr
 // Dark base map
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
 
-// Load latest radar frame
+window.radarLayer = null;
+
+// Load latest radar frame (current only)
 async function loadRadar() {
   try {
     const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
     const data = await res.json();
-    const frames = data.radar.past.concat(data.radar.nowcast || []);
+    
+    // Try nowcast first, fallback to past
+    let frames = (data.radar.nowcast || []).concat(data.radar.past || []);
     if (!frames.length) return;
 
-    const latest = frames[frames.length - 1]; // latest frame
+    const latest = frames[frames.length - 1]; // newest frame
     if (window.radarLayer) map.removeLayer(window.radarLayer);
 
     window.radarLayer = L.tileLayer(
@@ -71,9 +75,9 @@ async function loadRadar() {
   }
 }
 
-// Load radar initially and refresh every 5 minutes
+// Initial load and refresh every 30 seconds for near-real-time
 loadRadar();
-setInterval(loadRadar, 5 * 60 * 1000);
+setInterval(loadRadar, 30 * 1000);
 
 // Clock
 function updateClock() {
