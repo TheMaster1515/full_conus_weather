@@ -116,8 +116,12 @@
     try {
       const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
       const data = await res.json();
+
       radarFrames = data.radar.past.concat(data.radar.nowcast || []);
-      frameIndex = 0;
+
+      // Start at the latest frame (end of array)
+      frameIndex = radarFrames.length - 1;
+
       animateRadar();
     } catch(e) {
       console.error("Failed to load radar:", e);
