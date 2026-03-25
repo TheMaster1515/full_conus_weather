@@ -301,6 +301,7 @@ let satelliteLayer = null;
 let satelliteLayerExtra = null;
 let temperatureLayer = null;
 let latestMapData = null;
+let lastRainviewLoadedAt = null;
 let activeProduct = "radar";
 let clickMarker = null;
 const REFRESH_MS = 60 * 1000;
@@ -325,6 +326,26 @@ const WMO_TEXT = {
 function setStatus(msg, isError) {
   statusEl.textContent = msg;
   statusEl.style.color = isError ? "#ffb4b4" : "#bdf7c5";
+}
+
+function setUpdatedText(sourceLabel, sourceDate) {
+  const checked = new Date().toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  if (sourceDate instanceof Date && !Number.isNaN(sourceDate.getTime())) {
+    updatedEl.textContent =
+      sourceLabel + ": " + sourceDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }) + " | Checked: " + checked;
+    return;
+  }
+
+  updatedEl.textContent = sourceLabel + " | Checked: " + checked;
 }
 
 function setSingleScale(title, gradient, labels) {
@@ -537,7 +558,7 @@ function renderRadar() {
 
   if (activeProduct === "temperature") {
     addTemperatureLayer(layerOpacity);
-    updatedEl.textContent = "Temperature layer active";
+    setUpdatedText("Temperature layer active", null);
     setStatus("Loaded Temperature", false);
     return;
   }
@@ -552,12 +573,7 @@ function renderRadar() {
       zIndex: 1001
     }).addTo(map);
 
-    const now = new Date();
-    updatedEl.textContent = "Satellite Updated: " + now.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
+    setUpdatedText("Satellite Updated", new Date());
     setStatus("Loaded Satellite (GOES IR)", false);
     return;
   }
@@ -572,7 +588,7 @@ function renderRadar() {
         maxZoom: 12,
         zIndex: 1000
       }).addTo(map);
-      updatedEl.textContent = "Selected source empty; showing latest past radar frame";
+      setUpdatedText("Fallback Radar Frame", new Date(fallbackRadarFrame.time * 1000));
       setStatus("Source had no frame. Using fallback latest past frame.", true);
       return;
     }
@@ -602,8 +618,8 @@ function renderRadar() {
     addTemperatureLayer(Math.max(0.2, layerOpacity * 0.55));
   }
 
-  const radarTime = new Date(radarFrame.time * 1000);
-  updatedEl.textContent = "RainViewer Updated: " + radarTime.toLocaleTimeString("en-US", {
+  const loadedAt = lastRainviewLoadedAt || new Date();
+  updatedEl.textContent = "Rainview last time loaded " + loadedAt.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit"
@@ -623,6 +639,7 @@ async function loadRainViewerData() {
     if (!res.ok) throw new Error("HTTP " + res.status);
 
     latestMapData = await res.json();
+    lastRainviewLoadedAt = new Date();
     renderRadar();
   } catch (e) {
     setStatus("Failed to load RainViewer maps", true);
