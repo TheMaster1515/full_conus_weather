@@ -181,6 +181,54 @@ html, body {
 #weather-panel .k {
   color: rgba(255, 255, 255, 0.62);
 }
+
+#scale-panel {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2300;
+  width: 300px;
+  background: rgba(8, 12, 20, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #f6f8fc;
+  backdrop-filter: blur(6px);
+}
+
+#scale-panel .title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.86);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+#scale-panel .bar {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  margin-bottom: 4px;
+}
+
+#scale-panel .labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+#scale-panel .stack {
+  display: grid;
+  gap: 8px;
+}
+
+#scale-panel .item .item-title {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 3px;
+}
 </style>
 </head>
 <body>
@@ -221,6 +269,11 @@ html, body {
   <div class="row"><span class="k">Precip</span><span id="wp-precip">--</span></div>
 </div>
 
+<div id="scale-panel">
+  <div class="title" id="scale-title">Scale</div>
+  <div id="scale-content"></div>
+</div>
+
 <script>
 const map = L.map("map", {
   center: [41.122, -88.893],
@@ -240,6 +293,8 @@ const statusEl = document.getElementById("status");
 const updatedEl = document.getElementById("updated");
 const weatherPanelEl = document.getElementById("weather-panel");
 const closeWeatherBtn = document.getElementById("wp-close");
+const scaleTitleEl = document.getElementById("scale-title");
+const scaleContentEl = document.getElementById("scale-content");
 
 let radarLayer = null;
 let satelliteLayer = null;
@@ -270,6 +325,63 @@ const WMO_TEXT = {
 function setStatus(msg, isError) {
   statusEl.textContent = msg;
   statusEl.style.color = isError ? "#ffb4b4" : "#bdf7c5";
+}
+
+function setSingleScale(title, gradient, labels) {
+  scaleTitleEl.textContent = title;
+  scaleContentEl.innerHTML =
+    '<div class="bar" style="background:' + gradient + ';"></div>' +
+    '<div class="labels"><span>' + labels[0] + '</span><span>' + labels[1] + '</span><span>' + labels[2] + '</span></div>';
+}
+
+function setStackedScale() {
+  scaleTitleEl.textContent = "Scale: Everything";
+  scaleContentEl.innerHTML =
+    '<div class="stack">' +
+      '<div class="item">' +
+        '<div class="item-title">Radar (dBZ)</div>' +
+        '<div class="bar" style="background: linear-gradient(90deg, #1dd1ff 0%, #39d353 35%, #f0c83c 60%, #f97316 78%, #ef4444 100%);"></div>' +
+        '<div class="labels"><span>Light</span><span>Moderate</span><span>Heavy</span></div>' +
+      '</div>' +
+      '<div class="item">' +
+        '<div class="item-title">Satellite Brightness</div>' +
+        '<div class="bar" style="background: linear-gradient(90deg, #111827 0%, #6b7280 50%, #f9fafb 100%);"></div>' +
+        '<div class="labels"><span>Cold Cloud Tops</span><span></span><span>Warmer</span></div>' +
+      '</div>' +
+      '<div class="item">' +
+        '<div class="item-title">Temperature (°F)</div>' +
+        '<div class="bar" style="background: linear-gradient(90deg, #2563eb 0%, #06b6d4 30%, #22c55e 50%, #eab308 72%, #ef4444 100%);"></div>' +
+        '<div class="labels"><span>20</span><span>60</span><span>100</span></div>' +
+      '</div>' +
+    '</div>';
+}
+
+function updateScale(product) {
+  if (product === "satellite") {
+    setSingleScale(
+      "Scale: Satellite Brightness",
+      "linear-gradient(90deg, #111827 0%, #6b7280 50%, #f9fafb 100%)",
+      ["Cold Cloud Tops", "", "Warmer"]
+    );
+    return;
+  }
+  if (product === "temperature") {
+    setSingleScale(
+      "Scale: Temperature (°F)",
+      "linear-gradient(90deg, #2563eb 0%, #06b6d4 30%, #22c55e 50%, #eab308 72%, #ef4444 100%)",
+      ["20", "60", "100"]
+    );
+    return;
+  }
+  if (product === "everything") {
+    setStackedScale();
+    return;
+  }
+  setSingleScale(
+    "Scale: Radar Reflectivity (dBZ)",
+    "linear-gradient(90deg, #1dd1ff 0%, #39d353 35%, #f0c83c 60%, #f97316 78%, #ef4444 100%)",
+    ["Light", "Moderate", "Heavy"]
+  );
 }
 
 function windDir(deg) {
@@ -415,6 +527,7 @@ function addTemperatureLayer(opacity) {
 
 function renderRadar() {
   if (!latestMapData) return;
+  updateScale(activeProduct);
   removeAllOverlays();
 
   const tileSize = window.devicePixelRatio >= 2 ? 512 : 256;
@@ -548,6 +661,7 @@ closeWeatherBtn.addEventListener("click", function() {
 
 updateClock();
 setInterval(updateClock, 1000);
+updateScale(activeProduct);
 loadRainViewerData();
 setInterval(loadRainViewerData, REFRESH_MS);
 </script>
