@@ -398,14 +398,9 @@ function applySettingsToken(token) {
     ptypeSnowLayer.setOpacity(layerOpacity);
   }
 
-  const layer = agenda.layer;
-  if (layer === "pcpn_typ") {
-    displayModeEl.value = "ptype";
-    applyDisplayMode("ptype");
-  } else {
-    displayModeEl.value = "radar";
-    applyDisplayMode("radar");
-  }
+  // Always start in reflectivity mode, even if token requests pcpn_typ.
+  displayModeEl.value = "radar";
+  applyDisplayMode("radar");
 }
 
 radarLayer.on("loading", function() {
