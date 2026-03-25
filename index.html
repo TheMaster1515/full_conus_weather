@@ -59,6 +59,11 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { m
 
 window.radarLayer = null;
 
+// RainViewer tile styling
+const RADAR_COLOR_SCHEME = 0; // classic palette (rain green/yellow/red)
+const RADAR_SMOOTH = 1;
+const RADAR_SNOW_COLORS = 1; // keep snow in separate colors
+
 // Load latest radar frame only
 async function loadRadar() {
   try {
@@ -75,10 +80,10 @@ async function loadRadar() {
     if (window.radarLayer) map.removeLayer(window.radarLayer);
 
     window.radarLayer = L.tileLayer(
-      `${host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`,
+      `${host}${latest.path}/256/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/${RADAR_SMOOTH}_${RADAR_SNOW_COLORS}.png`,
       { opacity:0.4, zIndex:1000 }
     ).addTo(map);
-
+gi
     // Display radar update time, capped at current local time
     const now = new Date();
     let frameTime = new Date(latest.time * 1000);
