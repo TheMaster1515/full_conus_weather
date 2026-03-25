@@ -253,14 +253,7 @@ html, body {
   }
 
   #hint {
-    top: auto;
-    bottom: 118px;
-    left: 8px;
-    right: 8px;
-    transform: none;
-    text-align: center;
-    font-size: 12px;
-    padding: 6px 10px;
+    display: none;
   }
 
   #weather-panel {
@@ -279,16 +272,12 @@ html, body {
   }
 
   #scale-panel {
-    left: 8px;
-    right: 8px;
-    bottom: 62px;
-    width: auto;
-    padding: 8px 10px;
+    display: none;
   }
 
   #updated {
     left: 8px;
-    bottom: 40px;
+    bottom: 36px;
     max-width: calc(100vw - 16px);
     box-sizing: border-box;
     font-size: 12px;
@@ -380,6 +369,7 @@ let latestMapData = null;
 let lastRainviewLoadedAt = null;
 let activeProduct = "radar";
 let clickMarker = null;
+const isMobile = window.matchMedia("(max-width: 768px)").matches;
 const REFRESH_MS = 60 * 1000;
 
 const NOWCOAST_WMS = "https://nowcoast.noaa.gov/geoserver/ows";
@@ -389,6 +379,12 @@ const DEFAULT_OPACITY = 0.62;
 const DEFAULT_FRAME_SOURCE = "latest_any";
 const DEFAULT_RADAR_CONFIG = { color: 2, smooth: 1, snow: 1 };
 let currentOpacity = DEFAULT_OPACITY;
+
+if (isMobile) {
+  // Make precipitation easier to see on smaller screens.
+  currentOpacity = 0.88;
+  opacityEl.value = "88";
+}
 
 const WMO_TEXT = {
   0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
@@ -750,6 +746,10 @@ closeWeatherBtn.addEventListener("click", function() {
     map.removeLayer(clickMarker);
     clickMarker = null;
   }
+});
+
+window.addEventListener("resize", function() {
+  map.invalidateSize();
 });
 
 updateClock();
