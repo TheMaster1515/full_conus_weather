@@ -575,7 +575,7 @@ function pickFallbackRadarFrame(data) {
 
 function buildRadarUrl(data, frame, config) {
   const host = data.host || "https://tilecache.rainviewer.com";
-  const size = window.devicePixelRatio >= 2 ? 512 : 256;
+  const size = 256;
   const color = config.color;
   const smooth = config.smooth;
   const snow = config.snow;
@@ -623,7 +623,7 @@ function renderRadar() {
   updateScale(activeProduct);
   removeAllOverlays();
 
-  const tileSize = window.devicePixelRatio >= 2 ? 512 : 256;
+  const tileSize = 256;
   const layerOpacity = currentOpacity;
   const radarFrame = pickFrame(latestMapData);
   const fallbackRadarFrame = pickFallbackRadarFrame(latestMapData);
