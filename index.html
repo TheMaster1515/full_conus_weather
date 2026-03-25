@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Full Conus Live Radar</title>
-
+<title>NWS Radar Viewer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,115 +10,417 @@
 
 <style>
 html, body {
-  margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #111;
+  font-family: "Segoe UI", Tahoma, sans-serif;
 }
 
-#map { width: 100vw; height: 100vh; transform: scale(1.05); transform-origin: center center; }
+#map {
+  width: 100vw;
+  height: 100vh;
+}
 
-.leaflet-control-attribution, .leaflet-control-zoom { display: none; }
+.leaflet-control-attribution,
+.leaflet-control-zoom {
+  display: none;
+}
 
 #clock {
-  position: fixed; bottom: 12px; left: 12px; color: white; font-family: monospace; font-size: 40px;
-  background: rgba(0,0,0,0.6); padding: 10px 16px; border-radius: 8px; z-index: 2000;
-  pointer-events: none; text-shadow: 1px 1px 2px black;
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 2200;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.62);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 34px;
+  font-family: monospace;
+  pointer-events: none;
 }
 
-#radar-updated {
-  position: fixed; bottom: 80px; left: 12px; color: white; font-family: monospace; font-size: 18px;
-  background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 6px; z-index: 2000;
-  pointer-events: none; text-shadow: 1px 1px 2px black;
+#radar-time {
+  position: fixed;
+  bottom: 74px;
+  left: 12px;
+  z-index: 2200;
+  color: #f2f2f2;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: monospace;
+  font-size: 15px;
+  pointer-events: none;
 }
 
-#zoom-buttons {
-  position: fixed; bottom: 12px; right: 12px; z-index: 2000;
+#controls {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 2300;
+  width: 300px;
+  background: rgba(8, 12, 20, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 12px;
+  color: #f6f8fc;
+  backdrop-filter: blur(6px);
 }
 
-#zoom-buttons button {
-  font-size: 24px; margin: 2px; padding: 8px 12px; border-radius: 6px; border: none;
-  background: rgba(0,0,0,0.6); color: white; cursor: pointer;
+#controls .title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
-#zoom-buttons button:hover { background: rgba(255,255,255,0.2); }
+
+#controls .row {
+  margin-top: 10px;
+}
+
+#controls label {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.82);
+  margin-bottom: 4px;
+}
+
+#controls input[type="range"] {
+  width: 100%;
+}
+
+#controls button {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#status {
+  margin-top: 8px;
+  min-height: 16px;
+  font-size: 12px;
+  color: #bdf7c5;
+}
+
+#hint {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2200;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(0, 0, 0, 0.56);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+#weather-panel {
+  position: fixed;
+  right: 12px;
+  top: 228px;
+  z-index: 2300;
+  width: 300px;
+  background: rgba(8, 12, 20, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 12px;
+  color: #f6f8fc;
+  backdrop-filter: blur(6px);
+  display: none;
+}
+
+#weather-panel .close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#weather-panel .close:hover {
+  color: #ffffff;
+}
+
+#weather-panel .loc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  margin-bottom: 6px;
+}
+
+#weather-panel .temp {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+#weather-panel .cond {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.84);
+  margin-bottom: 8px;
+}
+
+#weather-panel .row {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+#weather-panel .k {
+  color: rgba(255, 255, 255, 0.62);
+}
 </style>
 </head>
-
 <body>
 <div id="map"></div>
-<div id="radar-updated"></div>
 <div id="clock"></div>
-<div id="zoom-buttons">
-  <button onclick="zoomIn()">+</button>
-  <button onclick="zoomOut()">-</button>
+<div id="radar-time"></div>
+<div id="hint">NWS Radar loaded from NOAA map services. Click map for NWS point forecast.</div>
+
+<div id="controls">
+  <div class="title">NWS Radar Controls</div>
+  <div class="row">
+    <label for="radar-opacity">Radar Opacity</label>
+    <input id="radar-opacity" type="range" min="0" max="100" value="62" />
+  </div>
+  <div id="status"></div>
+</div>
+
+<div id="weather-panel">
+  <button class="close" id="wp-close" aria-label="Close weather panel">&#x2715;</button>
+  <div class="loc" id="wp-loc"></div>
+  <div class="temp" id="wp-temp">--</div>
+  <div class="cond" id="wp-cond">Click map for point forecast</div>
+  <div class="row"><span class="k">Forecast</span><span id="wp-short">--</span></div>
+  <div class="row"><span class="k">Precip Chance</span><span id="wp-pop">--</span></div>
+  <div class="row"><span class="k">Wind</span><span id="wp-wind">--</span></div>
+  <div class="row"><span class="k">Updated</span><span id="wp-updated">--</span></div>
 </div>
 
 <script>
-const map = L.map("map", { center:[39.5,-98.35], zoom:5, maxZoom:12, zoomControl:false, attributionControl:false });
+const map = L.map("map", {
+  center: [39.5, -98.35],
+  zoom: 5,
+  maxZoom: 12,
+  zoomControl: false,
+  attributionControl: false
+});
 
-// Dark base map
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  maxZoom: 18
+}).addTo(map);
 
-window.radarLayer = null;
+const RADAR_WMS = "https://mapservices.weather.noaa.gov/eventdriven/services/radar/radar_base_reflectivity/MapServer/WMSServer";
+const RADAR_LAYER_NAME = "1";
+const RADAR_REFRESH_MS = 5 * 60 * 1000;
 
-// Match RainViewer public API defaults.
-const TILE_SIZE = window.devicePixelRatio >= 2 ? 512 : 256;
-const RADAR_COLOR_SCHEME = 2;
-const RADAR_SMOOTH = 1;
-const RADAR_SNOW_COLORS = 1;
+const statusEl = document.getElementById("status");
+const radarTimeEl = document.getElementById("radar-time");
+const opacityInput = document.getElementById("radar-opacity");
+const closeWeatherBtn = document.getElementById("wp-close");
+const weatherPanelEl = document.getElementById("weather-panel");
 
-// Load latest radar frame only
-async function loadRadar() {
+let radarLayer = L.tileLayer.wms(RADAR_WMS, {
+  layers: RADAR_LAYER_NAME,
+  format: "image/png",
+  transparent: true,
+  opacity: 0.62,
+  version: "1.3.0",
+  zIndex: 1000
+}).addTo(map);
+
+let clickMarker = null;
+let activeForecastController = null;
+let activeRequestId = 0;
+
+const pointsCache = new Map();
+const forecastCache = new Map();
+
+function cacheKeyForLatLon(lat, lon) {
+  // Round to reduce repeated requests on nearby clicks in the same NWS grid cell.
+  return lat.toFixed(2) + "," + lon.toFixed(2);
+}
+
+function setWeatherLoading(lat, lon) {
+  weatherPanelEl.style.display = "block";
+  document.getElementById("wp-loc").textContent = lat.toFixed(3) + ", " + lon.toFixed(3);
+  document.getElementById("wp-temp").textContent = "--";
+  document.getElementById("wp-cond").textContent = "Loading NWS forecast...";
+  document.getElementById("wp-short").textContent = "--";
+  document.getElementById("wp-pop").textContent = "--";
+  document.getElementById("wp-wind").textContent = "--";
+  document.getElementById("wp-updated").textContent = "--";
+}
+
+function drawClickMarker(lat, lon) {
+  if (clickMarker) map.removeLayer(clickMarker);
+  clickMarker = L.circleMarker([lat, lon], {
+    radius: 7,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: "#1f7cff",
+    fillOpacity: 0.9
+  }).addTo(map);
+}
+
+function setStatus(message, isError) {
+  statusEl.textContent = message;
+  statusEl.style.color = isError ? "#ffb4b4" : "#bdf7c5";
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clock").textContent = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short"
+  });
+}
+
+function refreshRadar() {
+  radarLayer.setParams({ _: Date.now() });
+  const now = new Date();
+  radarTimeEl.textContent = "NWS Radar Updated: " + now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+radarLayer.on("loading", function() {
+  setStatus("Loading NWS radar tiles...", false);
+});
+
+radarLayer.on("load", function() {
+  setStatus("", false);
+});
+
+radarLayer.on("tileerror", function() {
+  setStatus("Radar tile failed to load from NOAA service", true);
+});
+
+opacityInput.addEventListener("input", function() {
+  const value = Number(opacityInput.value) / 100;
+  radarLayer.setOpacity(value);
+});
+
+async function fetchNwsPointForecast(lat, lon) {
+  const requestId = ++activeRequestId;
+
+  if (activeForecastController) {
+    activeForecastController.abort();
+  }
+  activeForecastController = new AbortController();
+
+  setWeatherLoading(lat, lon);
+  drawClickMarker(lat, lon);
+
   try {
-    const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-    const data = await res.json();
+    const key = cacheKeyForLatLon(lat, lon);
+    let pointsMeta = pointsCache.get(key);
 
-    // Use nowcast first, fallback to past
-    let frames = (data.radar.nowcast || []).concat(data.radar.past || []);
-    if (!frames.length) return;
+    if (!pointsMeta) {
+      const pUrl = "https://api.weather.gov/points/" + lat.toFixed(4) + "," + lon.toFixed(4);
+      const pointsRes = await fetch(pUrl, { signal: activeForecastController.signal });
+      if (!pointsRes.ok) throw new Error("Points HTTP " + pointsRes.status);
 
-    const latest = frames[frames.length - 1]; // newest frame
-    const host = data.host || "https://tilecache.rainviewer.com";
+      const pointsData = await pointsRes.json();
+      const props = pointsData.properties || {};
+      const forecastUrl = props.forecastHourly || props.forecast;
+      if (!forecastUrl) throw new Error("No forecast URL in points response");
 
-    if (window.radarLayer) map.removeLayer(window.radarLayer);
+      pointsMeta = {
+        forecastUrl: forecastUrl,
+        city: props.relativeLocation && props.relativeLocation.properties && props.relativeLocation.properties.city,
+        state: props.relativeLocation && props.relativeLocation.properties && props.relativeLocation.properties.state
+      };
+      pointsCache.set(key, pointsMeta);
+    }
 
-    window.radarLayer = L.tileLayer(
-      `${host}${latest.path}/${TILE_SIZE}/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/${RADAR_SMOOTH}_${RADAR_SNOW_COLORS}.png`,
-      {
-        tileSize: 256,
-        opacity: 0.8,
-        maxNativeZoom: 7,
-        maxZoom: 12,
-        zIndex: 1000
-      }
-    ).addTo(map);
+    let forecastData = forecastCache.get(pointsMeta.forecastUrl);
+    if (!forecastData) {
+      const forecastRes = await fetch(pointsMeta.forecastUrl, { signal: activeForecastController.signal });
+      if (!forecastRes.ok) throw new Error("Forecast HTTP " + forecastRes.status);
+      forecastData = await forecastRes.json();
+      forecastCache.set(pointsMeta.forecastUrl, forecastData);
+    }
 
-    // Display radar update time, capped at current local time
-    const now = new Date();
-    let frameTime = new Date(latest.time * 1000);
-    if (frameTime > now) frameTime = now;
+    if (requestId !== activeRequestId) {
+      return;
+    }
 
-    document.getElementById("radar-updated").textContent =
-      `Radar Updated: ${frameTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+    const period = forecastData.properties && forecastData.properties.periods && forecastData.properties.periods[0];
+    if (!period) throw new Error("No forecast period available");
 
-  } catch(e) {
-    console.error("Failed to load radar:", e);
+    const city = pointsMeta.city;
+    const state = pointsMeta.state;
+    const locText = (city && state) ? (city + ", " + state) : (lat.toFixed(3) + ", " + lon.toFixed(3));
+
+    weatherPanelEl.style.display = "block";
+    document.getElementById("wp-loc").textContent = locText;
+    document.getElementById("wp-temp").textContent = period.temperature + " " + period.temperatureUnit;
+    document.getElementById("wp-cond").textContent = period.detailedForecast || period.shortForecast || "Forecast unavailable";
+    document.getElementById("wp-short").textContent = period.shortForecast || "--";
+
+    const pop = period.probabilityOfPrecipitation && period.probabilityOfPrecipitation.value;
+    document.getElementById("wp-pop").textContent = (pop == null ? "--" : pop + "%");
+
+    const wind = (period.windSpeed || "") + " " + (period.windDirection || "");
+    document.getElementById("wp-wind").textContent = wind.trim() || "--";
+    document.getElementById("wp-updated").textContent = new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+
+    setStatus("Loaded NWS point forecast", false);
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      return;
+    }
+    setStatus("NWS forecast request failed", true);
+    document.getElementById("wp-cond").textContent = "Failed to load forecast";
+  } finally {
+    if (requestId === activeRequestId) {
+      activeForecastController = null;
+    }
   }
 }
 
-// Initial load + refresh every 30s for near real-time
-loadRadar();
-setInterval(loadRadar, 30 * 1000);
+map.on("click", function(e) {
+  fetchNwsPointForecast(e.latlng.lat, e.latlng.lng);
+  document.getElementById("hint").style.display = "none";
+});
 
-// Live clock
-function updateClock(){
-  const now = new Date();
-  document.getElementById("clock").textContent =
-    now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZoneName:"short"});
-}
+closeWeatherBtn.addEventListener("click", function() {
+  document.getElementById("weather-panel").style.display = "none";
+  if (clickMarker) {
+    map.removeLayer(clickMarker);
+    clickMarker = null;
+  }
+});
+
 updateClock();
 setInterval(updateClock, 1000);
-
-// Zoom buttons
-function zoomIn(){ map.zoomIn(); }
-function zoomOut(){ map.zoomOut(); }
+refreshRadar();
+setInterval(refreshRadar, RADAR_REFRESH_MS);
 </script>
 </body>
 </html>
