@@ -59,10 +59,117 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { m
 
 window.radarLayer = null;
 
-// RainViewer tile styling
-const RADAR_COLOR_SCHEME = 0; // classic palette (rain green/yellow/red)
+// RainViewer tile styling (source palette)
+// We recolor tiles client-side to enforce rain/snow colors.
+const RADAR_COLOR_SCHEME = 2;
 const RADAR_SMOOTH = 1;
-const RADAR_SNOW_COLORS = 1; // keep snow in separate colors
+const RADAR_SNOW_COLORS = 1;
+
+function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
+
+function mix(a, b, t) {
+  return Math.round(a + (b - a) * t);
+}
+
+function rainRamp(t) {
+  // Green -> Yellow -> Orange -> Red for rain intensity.
+  if (t < 0.33) {
+    const p = t / 0.33;
+    return [mix(40, 160, p), mix(200, 220, p), mix(40, 40, p)];
+  }
+  if (t < 0.66) {
+    const p = (t - 0.33) / 0.33;
+    return [mix(160, 255, p), mix(220, 180, p), mix(40, 0, p)];
+  }
+  const p = (t - 0.66) / 0.34;
+  return [mix(255, 210, p), mix(180, 40, p), mix(0, 0, p)];
+}
+
+function snowRamp(t) {
+  // Light blue -> deep blue for snow intensity.
+  return [mix(130, 10, t), mix(200, 80, t), mix(255, 255, t)];
+}
+
+function recolorRadarTile(imageData) {
+  const px = imageData.data;
+
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i];
+    const g = px[i + 1];
+    const b = px[i + 2];
+    const a = px[i + 3];
+
+    if (a === 0) continue;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    const sat = max === 0 ? 0 : delta / max;
+    const brightness = (r + g + b) / (3 * 255);
+
+    let hue = 0;
+    if (delta !== 0) {
+      if (max === r) hue = 60 * (((g - b) / delta) % 6);
+      else if (max === g) hue = 60 * (((b - r) / delta) + 2);
+      else hue = 60 * (((r - g) / delta) + 4);
+      if (hue < 0) hue += 360;
+    }
+
+    // Strongly blue hues are treated as snow when snow overlay is enabled.
+    const isSnow = RADAR_SNOW_COLORS === 1 && sat > 0.35 && hue >= 220 && hue <= 260;
+
+    // Darker source pixels generally indicate stronger returns.
+    const intensity = clamp01((1 - brightness) * 1.25 + (a / 255) * 0.15);
+    const [nr, ng, nb] = isSnow ? snowRamp(intensity) : rainRamp(intensity);
+
+    px[i] = nr;
+    px[i + 1] = ng;
+    px[i + 2] = nb;
+    px[i + 3] = Math.min(255, Math.round(a * 1.1));
+  }
+
+  return imageData;
+}
+
+function createStyledRadarLayer(tileUrl) {
+  return L.gridLayer({
+    tileSize: 256,
+    opacity: 0.55,
+    zIndex: 1000,
+    updateWhenZooming: false,
+    updateWhenIdle: true,
+    createTile(coords, done) {
+      const canvas = L.DomUtil.create("canvas", "leaflet-tile");
+      canvas.width = 256;
+      canvas.height = 256;
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = () => {
+        try {
+          ctx.drawImage(img, 0, 0, 256, 256);
+          const data = ctx.getImageData(0, 0, 256, 256);
+          recolorRadarTile(data);
+          ctx.putImageData(data, 0, 0);
+          done(null, canvas);
+        } catch (err) {
+          done(err, canvas);
+        }
+      };
+
+      img.onerror = () => {
+        done(new Error("Radar tile failed to load"), canvas);
+      };
+
+      img.src = L.Util.template(tileUrl, coords);
+      return canvas;
+    }
+  });
+}
 
 // Load latest radar frame only
 async function loadRadar() {
@@ -79,11 +186,10 @@ async function loadRadar() {
 
     if (window.radarLayer) map.removeLayer(window.radarLayer);
 
-    window.radarLayer = L.tileLayer(
-      `${host}${latest.path}/256/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/${RADAR_SMOOTH}_${RADAR_SNOW_COLORS}.png`,
-      { opacity:0.4, zIndex:1000 }
+    window.radarLayer = createStyledRadarLayer(
+      `${host}${latest.path}/256/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/${RADAR_SMOOTH}_${RADAR_SNOW_COLORS}.png`
     ).addTo(map);
-gi
+
     // Display radar update time, capped at current local time
     const now = new Date();
     let frameTime = new Date(latest.time * 1000);
