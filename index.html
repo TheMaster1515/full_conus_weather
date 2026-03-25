@@ -70,11 +70,12 @@ async function loadRadar() {
     if (!frames.length) return;
 
     const latest = frames[frames.length - 1]; // newest frame
+    const host = data.host || "https://tilecache.rainviewer.com";
 
     if (window.radarLayer) map.removeLayer(window.radarLayer);
 
     window.radarLayer = L.tileLayer(
-      `https://tilecache.rainviewer.com/v2/radar/${latest.time}/256/{z}/{x}/{y}/2/1_1.png`,
+      `${host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`,
       { opacity:0.4, zIndex:1000 }
     ).addTo(map);
 
