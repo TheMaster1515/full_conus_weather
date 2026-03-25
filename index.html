@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>NWS Radar Viewer</title>
+<title>RainViewer Radar Controls</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,7 +15,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #111;
+  background: #0f1116;
   font-family: "Segoe UI", Tahoma, sans-serif;
 }
 
@@ -43,7 +43,7 @@ html, body {
   pointer-events: none;
 }
 
-#radar-time {
+#updated {
   position: fixed;
   bottom: 74px;
   left: 12px;
@@ -53,7 +53,7 @@ html, body {
   border-radius: 6px;
   padding: 6px 10px;
   font-family: monospace;
-  font-size: 15px;
+  font-size: 14px;
   pointer-events: none;
 }
 
@@ -62,8 +62,8 @@ html, body {
   top: 12px;
   right: 12px;
   z-index: 2300;
-  width: 300px;
-  background: rgba(8, 12, 20, 0.86);
+  width: 320px;
+  background: rgba(8, 12, 20, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
   padding: 12px;
@@ -74,34 +74,32 @@ html, body {
 #controls .title {
   font-size: 14px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 #controls .row {
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
 #controls label {
   display: block;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.84);
   margin-bottom: 4px;
 }
 
+#controls select,
 #controls input[type="range"] {
   width: 100%;
+  box-sizing: border-box;
 }
 
-#controls button {
-  width: 100%;
-  margin-top: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.1);
+#controls select {
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  font-size: 13px;
-  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 7px 9px;
 }
 
 #status {
@@ -128,10 +126,10 @@ html, body {
 #weather-panel {
   position: fixed;
   right: 12px;
-  top: 228px;
+  top: 188px;
   z-index: 2300;
   width: 300px;
-  background: rgba(8, 12, 20, 0.86);
+  background: rgba(8, 12, 20, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
   padding: 12px;
@@ -149,28 +147,26 @@ html, body {
   color: rgba(255, 255, 255, 0.7);
   font-size: 16px;
   cursor: pointer;
-  line-height: 1;
 }
 
 #weather-panel .close:hover {
-  color: #ffffff;
+  color: #fff;
 }
 
 #weather-panel .loc {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.82);
   margin-bottom: 6px;
 }
 
 #weather-panel .temp {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 700;
   margin-bottom: 4px;
 }
 
 #weather-panel .cond {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.84);
   margin-bottom: 8px;
 }
 
@@ -190,22 +186,27 @@ html, body {
 <body>
 <div id="map"></div>
 <div id="clock"></div>
-<div id="radar-time"></div>
-<div id="hint">NWS Radar loaded from NOAA map services. Click map for NWS point forecast.</div>
+<div id="updated"></div>
+<div id="hint">Use Product to switch between Radar, Satellite, Temperature, and Everything.</div>
 
 <div id="controls">
-  <div class="title">NWS Radar Controls</div>
+  <div class="title">RainViewer Product Options</div>
+
   <div class="row">
-    <label for="display-mode">Display Mode</label>
-    <select id="display-mode">
-      <option value="radar">Radar Reflectivity</option>
-      <option value="ptype">Precip Type (Forecast)</option>
+    <label for="product-mode">Product</label>
+    <select id="product-mode">
+      <option value="radar">Radar</option>
+      <option value="satellite">Satellite</option>
+      <option value="temperature">Temperature</option>
+      <option value="everything">Everything</option>
     </select>
   </div>
+
   <div class="row">
-    <label for="radar-opacity">Radar Opacity</label>
-    <input id="radar-opacity" type="range" min="0" max="100" value="62" />
+    <label for="opacity">Opacity</label>
+    <input id="opacity" type="range" min="0" max="100" value="62" />
   </div>
+
   <div id="status"></div>
 </div>
 
@@ -213,16 +214,16 @@ html, body {
   <button class="close" id="wp-close" aria-label="Close weather panel">&#x2715;</button>
   <div class="loc" id="wp-loc"></div>
   <div class="temp" id="wp-temp">--</div>
-  <div class="cond" id="wp-cond">Click map for point forecast</div>
-  <div class="row"><span class="k">Forecast</span><span id="wp-short">--</span></div>
-  <div class="row"><span class="k">Precip Chance</span><span id="wp-pop">--</span></div>
+  <div class="cond" id="wp-cond">Click map for current conditions</div>
+  <div class="row"><span class="k">Feels Like</span><span id="wp-feels">--</span></div>
+  <div class="row"><span class="k">Humidity</span><span id="wp-humidity">--</span></div>
   <div class="row"><span class="k">Wind</span><span id="wp-wind">--</span></div>
-  <div class="row"><span class="k">Updated</span><span id="wp-updated">--</span></div>
+  <div class="row"><span class="k">Precip</span><span id="wp-precip">--</span></div>
 </div>
 
 <script>
 const map = L.map("map", {
-  center: [39.5, -98.35],
+  center: [41.122, -88.893],
   zoom: 5,
   maxZoom: 12,
   zoomControl: false,
@@ -233,86 +234,102 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
   maxZoom: 18
 }).addTo(map);
 
-const RADAR_WMS = "https://mapservices.weather.noaa.gov/eventdriven/services/radar/radar_base_reflectivity/MapServer/WMSServer";
-const RADAR_LAYER_NAME = "1";
-const NOWCOAST_WMS = "https://nowcoast.noaa.gov/geoserver/ows";
-const PTYPE_RAIN_LAYER = "ndfd_precipitation:conus_6hr_precipitation_amount";
-const PTYPE_SNOW_LAYER = "ndfd_precipitation:conus_6hr_snow_amount";
-const DEFAULT_SETTINGS_TOKEN = "v1_eyJhZ2VuZGEiOnsiaWQiOiJuYXRpb25hbCIsImNlbnRlciI6Wy04OC44OTMsNDEuMTIyXSwibG9jYXRpb24iOm51bGwsInpvb20iOjQuOTMyMDQ2Njk5Nzc2Njc1LCJsYXllciI6InBjcG5fdHlwIn0sImFuaW1hdGluZyI6ZmFsc2UsImJhc2UiOiJkYXJrY2FudmFzIiwiYXJ0Y2MiOmZhbHNlLCJjb3VudHkiOnRydWUsImN3YSI6dHJ1ZSwicmZjIjpmYWxzZSwic3RhdGUiOnRydWUsIm1lbnUiOnRydWUsInNob3J0RnVzZWRPbmx5Ijp0cnVlLCJvcGFjaXR5Ijp7ImFsZXJ0cyI6MC44LCJsb2NhbCI6MC42LCJsb2NhbFN0YXRpb25zIjowLjgsIm5hdGlvbmFsIjowLjZ9fQ";
-const RADAR_REFRESH_MS = 5 * 60 * 1000;
-
+const productModeEl = document.getElementById("product-mode");
+const opacityEl = document.getElementById("opacity");
 const statusEl = document.getElementById("status");
-const radarTimeEl = document.getElementById("radar-time");
-const opacityInput = document.getElementById("radar-opacity");
-const closeWeatherBtn = document.getElementById("wp-close");
+const updatedEl = document.getElementById("updated");
 const weatherPanelEl = document.getElementById("weather-panel");
-const displayModeEl = document.getElementById("display-mode");
+const closeWeatherBtn = document.getElementById("wp-close");
 
-let radarLayer = L.tileLayer.wms(RADAR_WMS, {
-  layers: RADAR_LAYER_NAME,
-  format: "image/png",
-  transparent: true,
-  opacity: 0.62,
-  version: "1.3.0",
-  zIndex: 1000
-}).addTo(map);
-
-let ptypeRainLayer = L.tileLayer.wms(NOWCOAST_WMS, {
-  layers: PTYPE_RAIN_LAYER,
-  format: "image/png",
-  transparent: true,
-  opacity: 0.62,
-  version: "1.3.0",
-  zIndex: 1000
-});
-
-let ptypeSnowLayer = L.tileLayer.wms(NOWCOAST_WMS, {
-  layers: PTYPE_SNOW_LAYER,
-  format: "image/png",
-  transparent: true,
-  opacity: 0.62,
-  version: "1.3.0",
-  zIndex: 1001
-});
-
+let radarLayer = null;
+let satelliteLayer = null;
+let satelliteLayerExtra = null;
+let temperatureLayer = null;
+let latestMapData = null;
+let activeProduct = "radar";
 let clickMarker = null;
-let activeForecastController = null;
-let activeRequestId = 0;
-let activeMode = "radar";
+const REFRESH_MS = 60 * 1000;
 
-const pointsCache = new Map();
-const forecastCache = new Map();
+const NOWCOAST_WMS = "https://nowcoast.noaa.gov/geoserver/ows";
+const CONUS_TEMP_LAYER = "ndfd_temperature:conus_air_temperature";
+const GOES_SAT_IR_LAYER = "satellite:goes_longwave_imagery";
+const DEFAULT_OPACITY = 0.62;
+const DEFAULT_FRAME_SOURCE = "latest_any";
+const DEFAULT_RADAR_CONFIG = { color: 2, smooth: 1, snow: 1 };
+let currentOpacity = DEFAULT_OPACITY;
 
-function cacheKeyForLatLon(lat, lon) {
-  // Round to reduce repeated requests on nearby clicks in the same NWS grid cell.
-  return lat.toFixed(2) + "," + lon.toFixed(2);
+const WMO_TEXT = {
+  0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+  45: "Fog", 48: "Icy fog", 51: "Light drizzle", 53: "Drizzle", 55: "Dense drizzle",
+  61: "Light rain", 63: "Rain", 65: "Heavy rain", 66: "Freezing rain", 67: "Heavy freezing rain",
+  71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
+  80: "Rain showers", 81: "Rain showers", 82: "Heavy showers",
+  85: "Snow showers", 86: "Heavy snow showers", 95: "Thunderstorm"
+};
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg;
+  statusEl.style.color = isError ? "#ffb4b4" : "#bdf7c5";
 }
 
-function setWeatherLoading(lat, lon) {
+function windDir(deg) {
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  if (!Number.isFinite(deg)) return "--";
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+function showWeatherLoading(lat, lon) {
   weatherPanelEl.style.display = "block";
   document.getElementById("wp-loc").textContent = lat.toFixed(3) + ", " + lon.toFixed(3);
   document.getElementById("wp-temp").textContent = "--";
-  document.getElementById("wp-cond").textContent = "Loading NWS forecast...";
-  document.getElementById("wp-short").textContent = "--";
-  document.getElementById("wp-pop").textContent = "--";
+  document.getElementById("wp-cond").textContent = "Loading...";
+  document.getElementById("wp-feels").textContent = "--";
+  document.getElementById("wp-humidity").textContent = "--";
   document.getElementById("wp-wind").textContent = "--";
-  document.getElementById("wp-updated").textContent = "--";
+  document.getElementById("wp-precip").textContent = "--";
 }
 
 function drawClickMarker(lat, lon) {
   if (clickMarker) map.removeLayer(clickMarker);
   clickMarker = L.circleMarker([lat, lon], {
-    radius: 7,
-    color: "#ffffff",
+    radius: 6,
+    color: "#fff",
     weight: 2,
-    fillColor: "#1f7cff",
+    fillColor: "#4fa9ff",
     fillOpacity: 0.9
   }).addTo(map);
 }
 
-function setStatus(message, isError) {
-  statusEl.textContent = message;
-  statusEl.style.color = isError ? "#ffb4b4" : "#bdf7c5";
+async function fetchCurrentConditions(lat, lon) {
+  showWeatherLoading(lat, lon);
+  drawClickMarker(lat, lon);
+
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", lat.toFixed(4));
+  url.searchParams.set("longitude", lon.toFixed(4));
+  url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,precipitation");
+  url.searchParams.set("temperature_unit", "fahrenheit");
+  url.searchParams.set("wind_speed_unit", "mph");
+  url.searchParams.set("precipitation_unit", "inch");
+  url.searchParams.set("timezone", "auto");
+
+  try {
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const c = data.current || {};
+
+    document.getElementById("wp-temp").textContent = Math.round(c.temperature_2m) + " F";
+    document.getElementById("wp-cond").textContent = WMO_TEXT[c.weather_code] || "Current conditions";
+    document.getElementById("wp-feels").textContent = Math.round(c.apparent_temperature) + " F";
+    document.getElementById("wp-humidity").textContent = (c.relative_humidity_2m ?? "--") + "%";
+    document.getElementById("wp-wind").textContent = Math.round(c.wind_speed_10m || 0) + " mph " + windDir(c.wind_direction_10m);
+    document.getElementById("wp-precip").textContent = (c.precipitation ?? 0) + '"';
+    setStatus("Loaded current conditions", false);
+  } catch (e) {
+    document.getElementById("wp-cond").textContent = "Failed to load current conditions";
+    setStatus("Current conditions request failed", true);
+  }
 }
 
 function updateClock() {
@@ -325,197 +342,204 @@ function updateClock() {
   });
 }
 
-function refreshRadar() {
-  const stamp = Date.now();
-  if (activeMode === "radar") {
-    radarLayer.setParams({ _: stamp });
-  } else {
-    ptypeRainLayer.setParams({ _: stamp });
-    ptypeSnowLayer.setParams({ _: stamp });
+function pickFrame(data) {
+  const source = DEFAULT_FRAME_SOURCE;
+  const past = (data.radar && data.radar.past) || [];
+  const nowcast = (data.radar && data.radar.nowcast) || [];
+
+  if (source === "latest_past") {
+    return past.length ? past[past.length - 1] : null;
   }
-  const now = new Date();
-  const label = activeMode === "radar" ? "NWS Radar Updated: " : "NWS Precip Type Updated: ";
-  radarTimeEl.textContent = label + now.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  });
+  if (source === "latest_nowcast") {
+    return nowcast.length ? nowcast[nowcast.length - 1] : null;
+  }
+
+  const merged = nowcast.concat(past);
+  return merged.length ? merged[merged.length - 1] : null;
 }
 
-function applyDisplayMode(mode) {
-  activeMode = mode;
-  map.removeLayer(radarLayer);
-  map.removeLayer(ptypeRainLayer);
-  map.removeLayer(ptypeSnowLayer);
-
-  if (mode === "ptype") {
-    ptypeRainLayer.addTo(map);
-    ptypeSnowLayer.addTo(map);
-    setStatus("Precip Type mode", false);
-  } else {
-    radarLayer.addTo(map);
-    setStatus("Radar reflectivity mode", false);
-  }
-
-  refreshRadar();
+function pickSatelliteFrame(data) {
+  const frames = (data.satellite && data.satellite.infrared) || [];
+  return frames.length ? frames[frames.length - 1] : null;
 }
 
-function decodeSettingsToken(token) {
-  if (!token || token.indexOf("v1_") !== 0) return null;
-  const encoded = token.slice(3).replace(/-/g, "+").replace(/_/g, "/");
-  const padded = encoded + "=".repeat((4 - (encoded.length % 4)) % 4);
-  try {
-    const json = atob(padded);
-    return JSON.parse(json);
-  } catch (e) {
-    return null;
+function pickFallbackRadarFrame(data) {
+  const past = (data.radar && data.radar.past) || [];
+  return past.length ? past[past.length - 1] : null;
+}
+
+function buildRadarUrl(data, frame, config) {
+  const host = data.host || "https://tilecache.rainviewer.com";
+  const size = window.devicePixelRatio >= 2 ? 512 : 256;
+  const color = config.color;
+  const smooth = config.smooth;
+  const snow = config.snow;
+  return host + frame.path + "/" + size + "/{z}/{x}/{y}/" + color + "/" + smooth + "_" + snow + ".png";
+}
+
+function buildSatelliteUrl(data, frame) {
+  const host = data.host || "https://tilecache.rainviewer.com";
+  const size = window.devicePixelRatio >= 2 ? 512 : 256;
+  return host + frame.path + "/" + size + "/{z}/{x}/{y}/0/0_0.png";
+}
+
+function removeAllOverlays() {
+  if (radarLayer) {
+    map.removeLayer(radarLayer);
+    radarLayer = null;
+  }
+  if (satelliteLayer) {
+    map.removeLayer(satelliteLayer);
+    satelliteLayer = null;
+  }
+  if (satelliteLayerExtra) {
+    map.removeLayer(satelliteLayerExtra);
+    satelliteLayerExtra = null;
+  }
+  if (temperatureLayer) {
+    map.removeLayer(temperatureLayer);
+    temperatureLayer = null;
   }
 }
 
-function applySettingsToken(token) {
-  const settings = decodeSettingsToken(token);
-  if (!settings) return;
-
-  const agenda = settings.agenda || {};
-  const center = agenda.center;
-  const zoom = agenda.zoom;
-  if (Array.isArray(center) && center.length === 2) {
-    const lon = Number(center[0]);
-    const lat = Number(center[1]);
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      map.setView([lat, lon], Number.isFinite(zoom) ? zoom : map.getZoom());
-    }
-  }
-
-  const opacity = settings.opacity || {};
-  const localOpacity = Number(opacity.local);
-  if (Number.isFinite(localOpacity)) {
-    const sliderValue = Math.max(0, Math.min(100, Math.round(localOpacity * 100)));
-    opacityInput.value = String(sliderValue);
-    const layerOpacity = sliderValue / 100;
-    radarLayer.setOpacity(layerOpacity);
-    ptypeRainLayer.setOpacity(layerOpacity);
-    ptypeSnowLayer.setOpacity(layerOpacity);
-  }
-
-  // Always start in reflectivity mode, even if token requests pcpn_typ.
-  displayModeEl.value = "radar";
-  applyDisplayMode("radar");
+function addTemperatureLayer(opacity) {
+  temperatureLayer = L.tileLayer.wms(NOWCOAST_WMS, {
+    layers: CONUS_TEMP_LAYER,
+    format: "image/png",
+    transparent: true,
+    opacity: opacity,
+    version: "1.3.0",
+    zIndex: 1002
+  }).addTo(map);
 }
 
-radarLayer.on("loading", function() {
-  setStatus("Loading NWS radar tiles...", false);
-});
+function renderRadar() {
+  if (!latestMapData) return;
+  removeAllOverlays();
 
-radarLayer.on("load", function() {
-  setStatus("", false);
-});
+  const tileSize = window.devicePixelRatio >= 2 ? 512 : 256;
+  const layerOpacity = currentOpacity;
+  const radarFrame = pickFrame(latestMapData);
+  const fallbackRadarFrame = pickFallbackRadarFrame(latestMapData);
 
-radarLayer.on("tileerror", function() {
-  setStatus("Radar tile failed to load from NOAA service", true);
-});
-
-opacityInput.addEventListener("input", function() {
-  const value = Number(opacityInput.value) / 100;
-  radarLayer.setOpacity(value);
-  ptypeRainLayer.setOpacity(value);
-  ptypeSnowLayer.setOpacity(value);
-});
-
-displayModeEl.addEventListener("change", function() {
-  applyDisplayMode(displayModeEl.value);
-});
-
-async function fetchNwsPointForecast(lat, lon) {
-  const requestId = ++activeRequestId;
-
-  if (activeForecastController) {
-    activeForecastController.abort();
+  if (activeProduct === "temperature") {
+    addTemperatureLayer(layerOpacity);
+    updatedEl.textContent = "Temperature layer active";
+    setStatus("Loaded Temperature", false);
+    return;
   }
-  activeForecastController = new AbortController();
 
-  setWeatherLoading(lat, lon);
-  drawClickMarker(lat, lon);
+  if (activeProduct === "satellite") {
+    satelliteLayer = L.tileLayer.wms(NOWCOAST_WMS, {
+      layers: GOES_SAT_IR_LAYER,
+      format: "image/png",
+      transparent: true,
+      opacity: layerOpacity,
+      version: "1.3.0",
+      zIndex: 1001
+    }).addTo(map);
 
-  try {
-    const key = cacheKeyForLatLon(lat, lon);
-    let pointsMeta = pointsCache.get(key);
-
-    if (!pointsMeta) {
-      const pUrl = "https://api.weather.gov/points/" + lat.toFixed(4) + "," + lon.toFixed(4);
-      const pointsRes = await fetch(pUrl, { signal: activeForecastController.signal });
-      if (!pointsRes.ok) throw new Error("Points HTTP " + pointsRes.status);
-
-      const pointsData = await pointsRes.json();
-      const props = pointsData.properties || {};
-      const forecastUrl = props.forecastHourly || props.forecast;
-      if (!forecastUrl) throw new Error("No forecast URL in points response");
-
-      pointsMeta = {
-        forecastUrl: forecastUrl,
-        city: props.relativeLocation && props.relativeLocation.properties && props.relativeLocation.properties.city,
-        state: props.relativeLocation && props.relativeLocation.properties && props.relativeLocation.properties.state
-      };
-      pointsCache.set(key, pointsMeta);
-    }
-
-    let forecastData = forecastCache.get(pointsMeta.forecastUrl);
-    if (!forecastData) {
-      const forecastRes = await fetch(pointsMeta.forecastUrl, { signal: activeForecastController.signal });
-      if (!forecastRes.ok) throw new Error("Forecast HTTP " + forecastRes.status);
-      forecastData = await forecastRes.json();
-      forecastCache.set(pointsMeta.forecastUrl, forecastData);
-    }
-
-    if (requestId !== activeRequestId) {
-      return;
-    }
-
-    const period = forecastData.properties && forecastData.properties.periods && forecastData.properties.periods[0];
-    if (!period) throw new Error("No forecast period available");
-
-    const city = pointsMeta.city;
-    const state = pointsMeta.state;
-    const locText = (city && state) ? (city + ", " + state) : (lat.toFixed(3) + ", " + lon.toFixed(3));
-
-    weatherPanelEl.style.display = "block";
-    document.getElementById("wp-loc").textContent = locText;
-    document.getElementById("wp-temp").textContent = period.temperature + " " + period.temperatureUnit;
-    document.getElementById("wp-cond").textContent = period.detailedForecast || period.shortForecast || "Forecast unavailable";
-    document.getElementById("wp-short").textContent = period.shortForecast || "--";
-
-    const pop = period.probabilityOfPrecipitation && period.probabilityOfPrecipitation.value;
-    document.getElementById("wp-pop").textContent = (pop == null ? "--" : pop + "%");
-
-    const wind = (period.windSpeed || "") + " " + (period.windDirection || "");
-    document.getElementById("wp-wind").textContent = wind.trim() || "--";
-    document.getElementById("wp-updated").textContent = new Date().toLocaleTimeString("en-US", {
+    const now = new Date();
+    updatedEl.textContent = "Satellite Updated: " + now.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
     });
+    setStatus("Loaded Satellite (GOES IR)", false);
+    return;
+  }
 
-    setStatus("Loaded NWS point forecast", false);
-  } catch (err) {
-    if (err && err.name === "AbortError") {
+  if (!radarFrame) {
+    if (fallbackRadarFrame) {
+      const fallbackUrl = buildRadarUrl(latestMapData, fallbackRadarFrame, DEFAULT_RADAR_CONFIG);
+      radarLayer = L.tileLayer(fallbackUrl, {
+        tileSize: tileSize,
+        opacity: layerOpacity,
+        maxNativeZoom: 7,
+        maxZoom: 12,
+        zIndex: 1000
+      }).addTo(map);
+      updatedEl.textContent = "Selected source empty; showing latest past radar frame";
+      setStatus("Source had no frame. Using fallback latest past frame.", true);
       return;
     }
-    setStatus("NWS forecast request failed", true);
-    document.getElementById("wp-cond").textContent = "Failed to load forecast";
-  } finally {
-    if (requestId === activeRequestId) {
-      activeForecastController = null;
-    }
+    setStatus("No radar frame available for selected source", true);
+    return;
+  }
+
+  const radarConfig = DEFAULT_RADAR_CONFIG;
+  const radarUrl = buildRadarUrl(latestMapData, radarFrame, radarConfig);
+  radarLayer = L.tileLayer(radarUrl, {
+    tileSize: tileSize,
+    opacity: layerOpacity,
+    maxNativeZoom: 7,
+    maxZoom: 12,
+    zIndex: 1000
+  }).addTo(map);
+
+  if (activeProduct === "everything") {
+    satelliteLayer = L.tileLayer.wms(NOWCOAST_WMS, {
+      layers: GOES_SAT_IR_LAYER,
+      format: "image/png",
+      transparent: true,
+      opacity: Math.max(0.2, layerOpacity * 0.45),
+      version: "1.3.0",
+      zIndex: 1001
+    }).addTo(map);
+    addTemperatureLayer(Math.max(0.2, layerOpacity * 0.55));
+  }
+
+  const radarTime = new Date(radarFrame.time * 1000);
+  updatedEl.textContent = "RainViewer Updated: " + radarTime.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  if (activeProduct === "everything") {
+    setStatus("Loaded Everything (Radar + Satellite + Temperature)", false);
+  } else {
+    setStatus("Loaded Radar", false);
   }
 }
 
+async function loadRainViewerData() {
+  try {
+    setStatus("Loading RainViewer data...", false);
+    const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    latestMapData = await res.json();
+    renderRadar();
+  } catch (e) {
+    setStatus("Failed to load RainViewer maps", true);
+  }
+}
+
+productModeEl.addEventListener("change", function() {
+  activeProduct = productModeEl.value;
+  renderRadar();
+});
+
+opacityEl.addEventListener("input", function() {
+  currentOpacity = Number(opacityEl.value) / 100;
+  if (radarLayer) radarLayer.setOpacity(currentOpacity);
+  if (satelliteLayer) {
+    const satOpacity = activeProduct === "everything" ? Math.max(0.2, currentOpacity * 0.45) : currentOpacity;
+    satelliteLayer.setOpacity(satOpacity);
+  }
+  if (temperatureLayer) {
+    const tempOpacity = activeProduct === "everything" ? Math.max(0.2, currentOpacity * 0.55) : currentOpacity;
+    temperatureLayer.setOpacity(tempOpacity);
+  }
+});
+
 map.on("click", function(e) {
-  fetchNwsPointForecast(e.latlng.lat, e.latlng.lng);
-  document.getElementById("hint").style.display = "none";
+  fetchCurrentConditions(e.latlng.lat, e.latlng.lng);
 });
 
 closeWeatherBtn.addEventListener("click", function() {
-  document.getElementById("weather-panel").style.display = "none";
+  weatherPanelEl.style.display = "none";
   if (clickMarker) {
     map.removeLayer(clickMarker);
     clickMarker = null;
@@ -524,9 +548,8 @@ closeWeatherBtn.addEventListener("click", function() {
 
 updateClock();
 setInterval(updateClock, 1000);
-applySettingsToken(DEFAULT_SETTINGS_TOKEN);
-refreshRadar();
-setInterval(refreshRadar, RADAR_REFRESH_MS);
+loadRainViewerData();
+setInterval(loadRainViewerData, REFRESH_MS);
 </script>
 </body>
 </html>
