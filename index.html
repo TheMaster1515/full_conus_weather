@@ -136,16 +136,30 @@ function recolorRadarTile(imageData) {
 function createStyledRadarLayer(tileUrl) {
   return L.gridLayer({
     tileSize: 256,
-    opacity: 0.55,
+    opacity: 0.72,
     zIndex: 1000,
     updateWhenZooming: false,
     updateWhenIdle: true,
     createTile(coords, done) {
+      const tileSrc = L.Util.template(tileUrl, coords);
       const canvas = L.DomUtil.create("canvas", "leaflet-tile");
       canvas.width = 256;
       canvas.height = 256;
 
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        const imgFallback = L.DomUtil.create("img", "leaflet-tile");
+        imgFallback.alt = "";
+        imgFallback.setAttribute("role", "presentation");
+        imgFallback.width = 256;
+        imgFallback.height = 256;
+        imgFallback.crossOrigin = "anonymous";
+        imgFallback.onload = () => done(null, imgFallback);
+        imgFallback.onerror = () => done(null, imgFallback);
+        imgFallback.src = tileSrc;
+        return imgFallback;
+      }
+
       const img = new Image();
       img.crossOrigin = "anonymous";
 
@@ -157,15 +171,22 @@ function createStyledRadarLayer(tileUrl) {
           ctx.putImageData(data, 0, 0);
           done(null, canvas);
         } catch (err) {
-          done(err, canvas);
+          // If recolor is blocked or fails, show original colors instead of blank tiles.
+          try {
+            ctx.clearRect(0, 0, 256, 256);
+            ctx.drawImage(img, 0, 0, 256, 256);
+          } catch (_) {
+            // Ignore fallback draw errors and still return tile to avoid hard failures.
+          }
+          done(null, canvas);
         }
       };
 
       img.onerror = () => {
-        done(new Error("Radar tile failed to load"), canvas);
+        done(null, canvas);
       };
 
-      img.src = L.Util.template(tileUrl, coords);
+      img.src = tileSrc;
       return canvas;
     }
   });
